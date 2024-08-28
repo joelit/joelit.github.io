@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finto-data statustaulu</title>
+
+</head>
+<style>
+  ul { list-style-type: none; }
+</style>
+
+<body>
+    <h1>Sanastojen statukset</h1>
+    <p><b>Selite:</b> Kaikki kunossa &#128994; | Skosify törmännyt ongelmaan &#128993; | Kehitysversio ja julkaisuversio epäsynkassa &#128308;</p>
+    <ul id="status-container">
+        <!-- Status elements will be dynamically generated -->
+    </ul>
+
+    <script>
+        const BASE_URL = 'https://raw.githubusercontent.com/NatLibFi/Finto-data/master/vocabularies/';
+
+        async function getFileDate(url) {
+            const response = await fetch(url, { method: 'HEAD' });
+            const lastModified = response.headers.get('last-modified');
+            return new Date(lastModified);
+        }
+
+        async function getLogFileContent(url) {
+            const response = await fetch(url);
+            return await response.text();
+        }
+
+        async function checkStatus(resource) {
+            const name = resource.name
+            const path = BASE_URL+'/'+name+'/'
+            const dev = path + resource.dev
+            const skos = path + resource.skos
+            const log = path + resource.log
+
+            const [date1, date2, logContent] = await Promise.all([
+                getFileDate(dev),
+                getFileDate(skos),
+                getLogFileContent(log)
+            ]);
+
+            const daysDifference = Math.abs((date2 - date1) / (1000 * 3600 * 24));
+            const hasError = logContent.toLowerCase().includes('CRITICAL: ');
+
+            const statusElement = document.createElement('li');
+            statusElement.className = 'status';
+
+            if (daysDifference > 2) {
+                statusElement.classList.add('red');
+                statusElement.textContent += '\u{1f534} ';
+            } else if (hasError) {
+                statusElement.classList.add('yellow');
+                statusElement.textContent += '\u{1f7e1} ';
+            } else {
+                statusElement.classList.add('green');
+                statusElement.textContent += '\u{1f7e2} ';
+            }
+
+            const span = document.createElement('span');
+            span.textContent = name.charAt(0).toUpperCase() + name.slice(1);
+            statusElement.appendChild(span);
+
+            return statusElement;
+        }
+
+        async function generateStatusContainer() {
+            const container = document.getElementById('status-container');
+             const resources = { 'finaf': { "name": "finaf", "dev": "skosify.log", "skos": "finaf-skos/finaf-skos142.ttl", "log": "skosify.log" },
+                                'koko': { "name": "koko", "dev": "koko.ttl", "skos": "koko-skos.ttl", "log": "skosify.log" },
+                                'metatietosanasto': { "name": "metatietosanasto", "dev": "metatietosanasto.rdf", "skos": "metatietosanasto-skos.ttl", "log": "skosify.log" },
+                                'slm': { "name": "slm", "dev": "slm.ttl", "skos": "slm-skos.ttl", "log": "skosify.log" },
+                                'yso-aika': { "name": "yso-aika", "dev": "yso-aika.rdf", "skos": "yso-aika-skos.ttl", "log": "skosify.log" },
+                                'yso-paikat': { "name": "yso-paikat", "dev": "yso-paikat-vb-dump.rdf", "skos": "yso-paikat-skos.ttl", "log": "skosify.log" },
+                                'yso': { "name": "yso", "dev": "ysoKehitys.rdf", "skos": "yso-skos.ttl", "log": "skosify.log" } };
+
+            for (const resource of Object.keys(resources)) {
+                const statusElement = await checkStatus(resources[resource]);
+                container.appendChild(statusElement);
+            }
+        }
+
+        generateStatusContainer();
+    </script>
+</body>
+</html>
