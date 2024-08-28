@@ -12,18 +12,32 @@
 
 <body>
     <h1>Sanastojen statukset</h1>
-    <p><b>Selite:</b> Kaikki kunossa &#128994; | Skosify törmännyt ongelmaan &#128993; | Kehitysversio ja julkaisuversio epäsynkassa &#128308;</p>
-    <ul id="status-container">
-        <!-- Status elements will be dynamically generated -->
-    </ul>
+    <p><b>Selite:</b> Kaikki kunossa &#128994;  |  Skosify törmännyt ongelmaan &#128993;  |  Kehitysversio ja julkaisuversio epäsynkassa &#128308;</p>
+    <ul id="status-container"></ul>
 
     <script>
         const BASE_URL = 'https://raw.githubusercontent.com/NatLibFi/Finto-data/master/vocabularies/';
+        const API_URL = "https://api.github.com/repos/NatLibFi/Finto-data/commits";
 
-        async function getFileDate(url) {
-            const response = await fetch(url, { method: 'HEAD' });
-            const lastModified = response.headers.get('last-modified');
-            return new Date(lastModified);
+        async function getCommitDate(pathToFile) {
+            try {
+                const commitUrl = new URL("https://api.github.com/repos/NatLibFi/Finto-data/commits");
+                commitUrl.searchParams.set('page', '1');
+                commitUrl.searchParams.set('per_page', '1');
+                commitUrl.searchParams.set('path', pathToFile);
+
+              const response = await fetch(commitUrl.toString());
+              if (!response.ok) {
+                  throw new Error(`HTTP error! status: ${response.status}`);
+              }
+              const data = await response.json();
+              const lastCommitDate = data[0]?.commit?.committer?.date;
+              console.log(pathToFile + " : " + lastCommitDate);
+              return lastCommitDate || null;
+            } catch (error) {
+                console.error('Error fetching commit date:', error);
+                return null;
+            }
         }
 
         async function getLogFileContent(url) {
@@ -33,24 +47,24 @@
 
         async function checkStatus(resource) {
             const name = resource.name
-            const path = BASE_URL+'/'+name+'/'
-            const dev = path + resource.dev
-            const skos = path + resource.skos
-            const log = path + resource.log
+            const path = BASE_URL + '/' + name + '/';
+            const dev = 'vocabularies/' + name + '/' + resource.dev;
+            const skos = 'vocabularies/' + name + '/' + resource.skos;
+            const log = path + resource.log;
 
-            const [date1, date2, logContent] = await Promise.all([
-                getFileDate(dev),
-                getFileDate(skos),
+            const [devDate, publishDate, logContent] = await Promise.all([
+                getCommitDate(dev),
+                getCommitDate(skos),
                 getLogFileContent(log)
             ]);
 
-            const daysDifference = Math.abs((date2 - date1) / (1000 * 3600 * 24));
+            const daysDifference = (new Date(devDate).getTime() - new Date(publishDate).getTime()) / (1000 * 3600 * 24);
             const hasError = logContent.toLowerCase().includes('CRITICAL: ');
 
             const statusElement = document.createElement('li');
             statusElement.className = 'status';
 
-            if (daysDifference > 2) {
+            if (daysDifference > 1) {
                 statusElement.classList.add('red');
                 statusElement.textContent += '\u{1f534} ';
             } else if (hasError) {
