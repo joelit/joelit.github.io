@@ -12,7 +12,7 @@
 
 <body>
     <h1>Sanastojen statukset</h1>
-    <p><b>Selite:</b> Kaikki kunossa &#128994;  |  Skosify törmännyt ongelmaan &#128993;  |  Kehitysversio ja julkaisuversio epäsynkassa &#128308;</p>
+    <p><b>Selite:</b> Kaikki kunossa &#128994;  |  Kehitysversio ja julkaisuversio epäsynkassa &#128993;  |  Skosify on törmännyt ongelmaan &#128308;</p>
     <ul id="status-container"></ul>
 
     <script>
@@ -64,10 +64,10 @@
             const statusElement = document.createElement('li');
             statusElement.className = 'status';
 
-            if (daysDifference > 1) {
+            if (hasError) {
                 statusElement.classList.add('red');
                 statusElement.textContent += '\u{1f534} ';
-            } else if (hasError) {
+            } else if (daysDifference > 1) {
                 statusElement.classList.add('yellow');
                 statusElement.textContent += '\u{1f7e1} ';
             } else {
